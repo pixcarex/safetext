@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { normalizeExplainResult } from "@/lib/aiNormalize";
 import { chatJsonResponse, isLlmConfigured } from "@/lib/llm";
 import type { Answer } from "@/lib/types";
 
@@ -7,11 +8,6 @@ type Body = {
   correctAnswer: Answer;
   userAnswer: Answer;
   userWasCorrect: boolean;
-};
-
-type ExplainResult = {
-  explanation: string;
-  highlightPhrases?: string[];
 };
 
 const SYSTEM = `You help older adults learn about scam and safe text messages.
@@ -54,17 +50,15 @@ The user was ${body.userWasCorrect ? "correct" : "incorrect"}.
 Respond with JSON only.`;
 
   try {
-    const parsed = await chatJsonResponse<ExplainResult>(SYSTEM, user);
-    if (!parsed.explanation || typeof parsed.explanation !== "string") {
+    const raw = await chatJsonResponse<unknown>(SYSTEM, user);
+    const parsed = normalizeExplainResult(raw);
+    if (!parsed) {
       return NextResponse.json({ ok: false as const, reason: "bad_response" });
     }
-    const highlightPhrases = Array.isArray(parsed.highlightPhrases)
-      ? parsed.highlightPhrases.filter((p): p is string => typeof p === "string")
-      : [];
     return NextResponse.json({
       ok: true as const,
-      explanation: parsed.explanation.trim(),
-      highlightPhrases,
+      explanation: parsed.explanation,
+      highlightPhrases: parsed.highlightPhrases,
     });
   } catch {
     return NextResponse.json({ ok: false as const, reason: "llm_error" });
