@@ -1,4 +1,4 @@
-import type { Scenario } from "./types";
+import type { Difficulty, Scenario } from "./types";
 
 export const SCENARIOS: Scenario[] = [
   {

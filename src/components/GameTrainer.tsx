@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { scenariosForDifficulty } from "@/lib/messages";
 import type { Answer, Difficulty, Scenario } from "@/lib/types";
 import { ActionButtons } from "./ActionButtons";
+import { NextButton } from "./NextButton";
 import { MessageThread } from "./MessageThread";
 import { ScoreBar } from "./ScoreBar";
 import { TipsPanel } from "./TipsPanel";
@@ -217,7 +218,7 @@ export function GameTrainer() {
         </div>
       </header>
 
-      <main className="appMain">
+      <main id="main-content" className="appMain" tabIndex={-1}>
         <ScoreBar correct={correctCount} answered={answeredCount} />
 
         <p className="progressText" aria-live="polite">
@@ -250,18 +251,12 @@ export function GameTrainer() {
 
         {phase === "question" ? (
           <ActionButtons
-            phase="question"
             onSafe={() => void handleChoice("safe")}
             onScam={() => void handleChoice("scam")}
             disabled={isExplaining}
           />
         ) : (
-          <ActionButtons
-            phase="feedback"
-            onNext={handleNext}
-            disabled={isExplaining}
-            nextButtonRef={nextButtonRef}
-          />
+          <NextButton ref={nextButtonRef} onClick={handleNext} disabled={isExplaining} />
         )}
 
         <div className="secondaryActions">
