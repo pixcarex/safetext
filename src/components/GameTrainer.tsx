@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { scenariosForDifficulty } from "@/lib/messages";
 import type { Answer, Difficulty, Scenario } from "@/lib/types";
 import { ActionButtons } from "./ActionButtons";
@@ -49,9 +49,8 @@ function scenarioFromGenerated(gen: {
 
 export function GameTrainer() {
   const [difficulty, setDifficulty] = useState<Difficulty>("beginner");
-  const [queue, setQueue] = useState<Scenario[]>(() =>
-    shuffle(scenariosForDifficulty("beginner")),
-  );
+  // Deterministic initial queue so SSR and the first client render match (no Math.random in useState).
+  const [queue, setQueue] = useState<Scenario[]>(() => scenariosForDifficulty("beginner"));
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<"question" | "feedback">("question");
   const [correctCount, setCorrectCount] = useState(0);
@@ -67,7 +66,7 @@ export function GameTrainer() {
 
   const current = queue[index];
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setQueue(shuffle(scenariosForDifficulty(difficulty)));
     setIndex(0);
     setPhase("question");
