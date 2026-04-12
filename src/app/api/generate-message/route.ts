@@ -60,7 +60,19 @@ Return JSON only.`;
       (parsed.answer !== "safe" && parsed.answer !== "scam") ||
       (parsed.difficulty !== "beginner" && parsed.difficulty !== "intermediate")
     ) {
-      return NextResponse.json({ ok: false as const, error: "Invalid AI output." }, { status: 502 });
+      if (process.env.NODE_ENV === "development") {
+        console.error("[api/generate-message] Invalid AI output:", parsed);
+      }
+      return NextResponse.json(
+        {
+          ok: false as const,
+          error: "Invalid AI output.",
+          ...(process.env.NODE_ENV === "development"
+            ? { detail: JSON.stringify(parsed).slice(0, 400) }
+            : {}),
+        },
+        { status: 502 },
+      );
     }
     const highlightPhrases = Array.isArray(parsed.highlightPhrases)
       ? parsed.highlightPhrases.filter((p): p is string => typeof p === "string")
@@ -74,9 +86,18 @@ Return JSON only.`;
         highlightPhrases,
       },
     });
-  } catch {
+  } catch (err) {
+    console.error("[api/generate-message] LLM or parse error:", err);
+    const detail =
+      process.env.NODE_ENV === "development" && err instanceof Error
+        ? err.message.slice(0, 500)
+        : undefined;
     return NextResponse.json(
-      { ok: false as const, error: "Could not generate a message right now. Please try again." },
+      {
+        ok: false as const,
+        error: "Could not generate a message right now. Please try again.",
+        ...(detail ? { detail } : {}),
+      },
       { status: 502 },
     );
   }

@@ -164,10 +164,14 @@ export function GameTrainer() {
               highlightPhrases?: string[];
             };
           }
-        | { ok: false; error?: string };
+        | { ok: false; error?: string; detail?: string };
 
       if (!data.ok || !("scenario" in data)) {
-        setGenerateError(data.ok === false ? data.error ?? "Could not add a new message." : "Error.");
+        const base =
+          data.ok === false ? data.error ?? "Could not add a new message." : "Error.";
+        const withDetail =
+          data.ok === false && data.detail ? `${base} — ${data.detail}` : base;
+        setGenerateError(withDetail);
         return;
       }
       const scenario = scenarioFromGenerated(data.scenario);
