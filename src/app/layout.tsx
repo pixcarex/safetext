@@ -10,9 +10,9 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Spot the Scam: Text Message Trainer",
+  title: "SafeText — Text message trainer",
   description:
-    "Practice telling safe texts from scams with large text, simple feedback, and plain-English tips.",
+    "SafeText helps you practice telling safe texts from scams with large text, simple feedback, and plain-English tips.",
 };
 
 export default function RootLayout({

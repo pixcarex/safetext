@@ -124,9 +124,17 @@ main {
   font-size: var(--font-xl);
   font-weight: 800;
   line-height: 1.2;
-  margin: 0 0 0.6rem;
+  margin: 0 0 0.35rem;
   letter-spacing: -0.03em;
   color: #5b21b6;
+}
+
+.appTagline {
+  margin: 0 0 0.9rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  line-height: 1.35;
 }
 
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {

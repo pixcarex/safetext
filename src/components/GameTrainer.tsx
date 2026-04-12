@@ -192,7 +192,8 @@ export function GameTrainer() {
   return (
     <div className="appShell">
       <header className="appHeader">
-        <h1 className="appTitle">Spot the Scam: Text Message Trainer</h1>
+        <h1 className="appTitle">SafeText</h1>
+        <p className="appTagline">Text message trainer — practice spotting scams</p>
         <p className="appSubtitle">
           Read one text at a time. Tap <strong>Safe</strong> if it looks like a normal message, or{" "}
           <strong>Scam</strong> if something seems off. There is no timer—take your time.
