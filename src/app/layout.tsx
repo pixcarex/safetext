@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+  weight: ["500", "600", "700", "800"],
+});
 
 export const metadata: Metadata = {
   title: "Spot the Scam: Text Message Trainer",
@@ -13,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={plusJakarta.variable}>
       <body>
         <a href="#main-content" className="skipLink">
           Skip to main content
