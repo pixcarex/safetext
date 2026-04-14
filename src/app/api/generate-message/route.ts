@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { normalizeGenerateResult } from "@/lib/aiNormalize";
 import { chatJsonResponse, isLlmConfigured } from "@/lib/llm";
+import { friendlyHintFromLlmError, sanitizeForClient } from "@/lib/safeClientMessage";
 import type { Difficulty } from "@/lib/types";
 
 type Body = {
@@ -56,8 +57,6 @@ export async function POST(req: Request) {
 Requested difficulty: ${difficulty}
 Theme hint: ${theme}`;
 
-  const dev = process.env.NODE_ENV === "development";
-
   try {
     const raw = await chatJsonResponse<unknown>(SYSTEM, user);
     let normalized = normalizeGenerateResult(raw, difficulty);
@@ -69,18 +68,18 @@ ${JSON.stringify(raw).slice(0, 1800)}`;
         const repaired = await chatJsonResponse<unknown>(REPAIR_SYSTEM, repairUser);
         normalized = normalizeGenerateResult(repaired, difficulty);
       } catch (repairErr) {
-        if (dev) console.error("[api/generate-message] Repair pass failed:", repairErr);
+        console.error("[api/generate-message] Repair pass failed:", repairErr);
       }
     }
 
     if (!normalized) {
-      if (dev) console.error("[api/generate-message] Invalid AI output after repair:", raw);
+      console.error("[api/generate-message] Invalid AI output after repair:", raw);
       return NextResponse.json(
         {
           ok: false as const,
           error:
             "The AI returned an unexpected format. Try again, or set OPENAI_MODEL to gpt-4o-mini and check your API key.",
-          ...(dev ? { detail: JSON.stringify(raw).slice(0, 500) } : {}),
+          detail: sanitizeForClient(JSON.stringify(raw).slice(0, 500)),
         },
         { status: 502 },
       );
@@ -98,19 +97,14 @@ ${JSON.stringify(raw).slice(0, 1800)}`;
   } catch (err) {
     console.error("[api/generate-message] LLM or parse error:", err);
     const message = err instanceof Error ? err.message : String(err);
-    const isAuth =
-      /401|403|invalid_api_key|Incorrect API key|invalid x-api-key/i.test(message);
-    const hint = isAuth
-      ? "Check OPENAI_API_KEY in .env.local (local) or Vercel Environment Variables (deployed)."
-      : /model/i.test(message)
-        ? "Check OPENAI_MODEL matches a model your account can use (e.g. gpt-4o-mini)."
-        : "Check OPENAI_BASE_URL if using a proxy; try OPENAI_JSON_OBJECT_MODE=false if your gateway rejects JSON mode.";
+    const hint = friendlyHintFromLlmError(message);
+    const detail = sanitizeForClient(message);
 
     return NextResponse.json(
       {
         ok: false as const,
         error: `Could not generate a message. ${hint}`,
-        ...(dev ? { detail: message.slice(0, 600) } : {}),
+        detail,
       },
       { status: 502 },
     );
