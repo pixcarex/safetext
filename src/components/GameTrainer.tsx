@@ -42,6 +42,7 @@ export function GameTrainer() {
   const [lastWasCorrect, setLastWasCorrect] = useState(false);
   const [highlightPhrases, setHighlightPhrases] = useState<string[]>([]);
   const [isExplaining, setIsExplaining] = useState(false);
+  const [choiceFlash, setChoiceFlash] = useState<Answer | null>(null);
 
   const nextButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -62,6 +63,12 @@ export function GameTrainer() {
       nextButtonRef.current.focus();
     }
   }, [phase]);
+
+  useEffect(() => {
+    if (!choiceFlash) return;
+    const t = window.setTimeout(() => setChoiceFlash(null), 900);
+    return () => window.clearTimeout(t);
+  }, [choiceFlash]);
 
   const fetchExplanation = useCallback(
     async (scenario: Scenario, userAnswer: Answer, wasCorrect: boolean) => {
@@ -101,6 +108,7 @@ export function GameTrainer() {
   const handleChoice = useCallback(
     async (choice: Answer) => {
       if (!current || phase !== "question" || isExplaining) return;
+      setChoiceFlash(choice);
       const wasCorrect = choice === current.answer;
       setLastWasCorrect(wasCorrect);
       setCorrectCount((c) => (wasCorrect ? c + 1 : c));
@@ -161,10 +169,19 @@ export function GameTrainer() {
       <main id="main-content" className="appMain" tabIndex={-1}>
         <ScoreBar correct={correctCount} answered={answeredCount} />
 
+        {choiceFlash && (
+          <div
+            className={`choiceFlashOverlay choiceFlashOverlay--${choiceFlash}`}
+            aria-hidden
+            onAnimationEnd={() => setChoiceFlash(null)}
+          />
+        )}
+
         <MessageThread
           body={current.body}
           highlightPhrases={highlightPhrases}
           showHighlights={phase === "feedback"}
+          verdict={phase === "feedback" ? (lastWasCorrect ? "correct" : "wrong") : null}
         />
 
         {phase === "feedback" && (
