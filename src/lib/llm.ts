@@ -1,5 +1,12 @@
 function getBaseUrl(): string {
-  const base = process.env.OPENAI_BASE_URL?.replace(/\/$/, "") ?? "https://api.openai.com/v1";
+  let base = process.env.OPENAI_BASE_URL?.trim().replace(/\/$/, "") ?? "https://api.openai.com/v1";
+
+  // Common mistake: https://api.openai.com without /v1 — Chat Completions lives under /v1.
+  const looksAzure = /\/openai\/deployments\//i.test(base);
+  if (!looksAzure && !/\/v1$/i.test(base)) {
+    base = `${base}/v1`;
+  }
+
   return base;
 }
 
@@ -77,30 +84,30 @@ export async function chatJsonResponse<T>(
     body: JSON.stringify(body),
   });
 
-  // Some OpenAI-compatible servers return 400 for unsupported response_format — retry without it.
+  let firstErrorText: string | undefined;
+
+  // If JSON object mode was on and anything went wrong, retry once without it.
+  // Many proxies return 400/404/422 with different bodies than OpenAI.
   if (!res.ok && jsonObjectMode) {
-    const errText = await res.text();
-    const retryable =
-      res.status === 400 &&
-      /response_format|json_object|unsupported/i.test(errText);
-    if (retryable) {
-      delete body.response_format;
-      res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`,
-        },
-        body: JSON.stringify(body),
-      });
-    } else {
-      throw new Error(`LLM request failed: ${res.status} ${errText.slice(0, 800)}`);
-    }
+    firstErrorText = await res.text();
+    delete body.response_format;
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify(body),
+    });
   }
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`LLM request failed: ${res.status} ${text.slice(0, 800)}`);
+    const suffix =
+      firstErrorText !== undefined
+        ? ` (after retry without JSON mode; first response: ${firstErrorText.slice(0, 240)})`
+        : "";
+    throw new Error(`LLM request failed: ${res.status} ${text.slice(0, 600)}${suffix}`);
   }
 
   const data = (await res.json()) as {

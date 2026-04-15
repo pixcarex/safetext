@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { scenariosForDifficulty } from "@/lib/messages";
+import { pickExtraScenario, scenariosForDifficulty } from "@/lib/messages";
 import type { Answer, Difficulty, Scenario } from "@/lib/types";
 import { ActionButtons } from "./ActionButtons";
 import { NextButton } from "./NextButton";
@@ -30,23 +30,6 @@ function mergePhrases(staticPhrases: string[] | undefined, extra: string[]): str
   return out;
 }
 
-function scenarioFromGenerated(gen: {
-  body: string;
-  answer: Answer;
-  difficulty: Difficulty;
-  highlightPhrases?: string[];
-}): Scenario {
-  return {
-    id: `gen-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    body: gen.body,
-    answer: gen.answer,
-    difficulty: gen.difficulty,
-    fallbackExplanation:
-      "This is an extra practice message. If the explanation does not load, use the tips below: watch for urgent money requests, odd links, and requests for passwords.",
-    highlightPhrases: gen.highlightPhrases ?? [],
-  };
-}
-
 export function GameTrainer() {
   const [difficulty, setDifficulty] = useState<Difficulty>("beginner");
   // Deterministic initial queue so SSR and the first client render match (no Math.random in useState).
@@ -59,8 +42,6 @@ export function GameTrainer() {
   const [lastWasCorrect, setLastWasCorrect] = useState(false);
   const [highlightPhrases, setHighlightPhrases] = useState<string[]>([]);
   const [isExplaining, setIsExplaining] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
 
   const nextButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -74,7 +55,6 @@ export function GameTrainer() {
     setAnsweredCount(0);
     setExplanation("");
     setHighlightPhrases([]);
-    setGenerateError(null);
   }, [difficulty]);
 
   useEffect(() => {
@@ -144,43 +124,8 @@ export function GameTrainer() {
     setHighlightPhrases([]);
   }, [index, queue.length]);
 
-  const handleNewMessage = useCallback(async () => {
-    setGenerateError(null);
-    setIsGenerating(true);
-    try {
-      const res = await fetch("/api/generate-message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ difficulty }),
-      });
-      const data = (await res.json()) as
-        | {
-            ok: true;
-            scenario: {
-              body: string;
-              answer: Answer;
-              difficulty: Difficulty;
-              highlightPhrases?: string[];
-            };
-          }
-        | { ok: false; error?: string; detail?: string };
-
-      if (!data.ok || !("scenario" in data)) {
-        const base =
-          data.ok === false ? data.error ?? "Could not add a new message." : "Error.";
-        const withDetail =
-          data.ok === false && data.detail ? `${base} — ${data.detail}` : base;
-        setGenerateError(withDetail);
-        return;
-      }
-      const scenario = scenarioFromGenerated(data.scenario);
-      setQueue((q) => [...q, scenario]);
-      setGenerateError(null);
-    } catch {
-      setGenerateError("Could not add a new message. Check your connection and try again.");
-    } finally {
-      setIsGenerating(false);
-    }
+  const handleNewMessage = useCallback(() => {
+    setQueue((q) => [...q, pickExtraScenario(difficulty, q)]);
   }, [difficulty]);
 
   const progressLabel = useMemo(() => {
@@ -264,19 +209,9 @@ export function GameTrainer() {
         )}
 
         <div className="secondaryActions">
-          <button
-            type="button"
-            className="btn btnSecondary"
-            onClick={() => void handleNewMessage()}
-            disabled={isGenerating}
-          >
-            {isGenerating ? "Making a new message…" : "New practice message (AI)"}
+          <button type="button" className="btn btnSecondary" onClick={handleNewMessage}>
+            Add another practice message
           </button>
-          {generateError && (
-            <p className="generateError" role="alert">
-              {generateError}
-            </p>
-          )}
         </div>
       </main>
 
