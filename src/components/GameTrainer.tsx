@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { pickExtraScenario, scenariosForDifficulty } from "@/lib/messages";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { scenariosForDifficulty } from "@/lib/messages";
 import type { Answer, Difficulty, Scenario } from "@/lib/types";
 import { ActionButtons } from "./ActionButtons";
 import { NextButton } from "./NextButton";
@@ -124,15 +124,6 @@ export function GameTrainer() {
     setHighlightPhrases([]);
   }, [index, queue.length]);
 
-  const handleNewMessage = useCallback(() => {
-    setQueue((q) => [...q, pickExtraScenario(difficulty, q)]);
-  }, [difficulty]);
-
-  const progressLabel = useMemo(() => {
-    if (!current) return "";
-    return `Message ${index + 1} of ${queue.length}`;
-  }, [current, index, queue.length]);
-
   if (!current) {
     return <p className="emptyState">No messages for this level. Try the other difficulty.</p>;
   }
@@ -170,10 +161,6 @@ export function GameTrainer() {
       <main id="main-content" className="appMain" tabIndex={-1}>
         <ScoreBar correct={correctCount} answered={answeredCount} />
 
-        <p className="progressText" aria-live="polite">
-          {progressLabel}
-        </p>
-
         <MessageThread
           body={current.body}
           highlightPhrases={highlightPhrases}
@@ -207,12 +194,6 @@ export function GameTrainer() {
         ) : (
           <NextButton ref={nextButtonRef} onClick={handleNext} disabled={isExplaining} />
         )}
-
-        <div className="secondaryActions">
-          <button type="button" className="btn btnSecondary" onClick={handleNewMessage}>
-            Add another practice message
-          </button>
-        </div>
       </main>
 
       <TipsPanel />
