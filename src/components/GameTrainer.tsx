@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { pickExtraScenario, scenariosForDifficulty } from "@/lib/messages";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { scenariosForDifficulty } from "@/lib/messages";
 import type { Answer, Difficulty, Scenario } from "@/lib/types";
 import { ActionButtons } from "./ActionButtons";
 import { NextButton } from "./NextButton";
@@ -42,6 +42,7 @@ export function GameTrainer() {
   const [lastWasCorrect, setLastWasCorrect] = useState(false);
   const [highlightPhrases, setHighlightPhrases] = useState<string[]>([]);
   const [isExplaining, setIsExplaining] = useState(false);
+  const [choiceFlash, setChoiceFlash] = useState<Answer | null>(null);
 
   const nextButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -62,6 +63,12 @@ export function GameTrainer() {
       nextButtonRef.current.focus();
     }
   }, [phase]);
+
+  useEffect(() => {
+    if (!choiceFlash) return;
+    const t = window.setTimeout(() => setChoiceFlash(null), 900);
+    return () => window.clearTimeout(t);
+  }, [choiceFlash]);
 
   const fetchExplanation = useCallback(
     async (scenario: Scenario, userAnswer: Answer, wasCorrect: boolean) => {
@@ -101,6 +108,7 @@ export function GameTrainer() {
   const handleChoice = useCallback(
     async (choice: Answer) => {
       if (!current || phase !== "question" || isExplaining) return;
+      setChoiceFlash(choice);
       const wasCorrect = choice === current.answer;
       setLastWasCorrect(wasCorrect);
       setCorrectCount((c) => (wasCorrect ? c + 1 : c));
@@ -123,15 +131,6 @@ export function GameTrainer() {
     setExplanation("");
     setHighlightPhrases([]);
   }, [index, queue.length]);
-
-  const handleNewMessage = useCallback(() => {
-    setQueue((q) => [...q, pickExtraScenario(difficulty, q)]);
-  }, [difficulty]);
-
-  const progressLabel = useMemo(() => {
-    if (!current) return "";
-    return `Message ${index + 1} of ${queue.length}`;
-  }, [current, index, queue.length]);
 
   if (!current) {
     return <p className="emptyState">No messages for this level. Try the other difficulty.</p>;
@@ -170,14 +169,19 @@ export function GameTrainer() {
       <main id="main-content" className="appMain" tabIndex={-1}>
         <ScoreBar correct={correctCount} answered={answeredCount} />
 
-        <p className="progressText" aria-live="polite">
-          {progressLabel}
-        </p>
+        {choiceFlash && (
+          <div
+            className={`choiceFlashOverlay choiceFlashOverlay--${choiceFlash}`}
+            aria-hidden
+            onAnimationEnd={() => setChoiceFlash(null)}
+          />
+        )}
 
         <MessageThread
           body={current.body}
           highlightPhrases={highlightPhrases}
           showHighlights={phase === "feedback"}
+          verdict={phase === "feedback" ? (lastWasCorrect ? "correct" : "wrong") : null}
         />
 
         {phase === "feedback" && (
@@ -207,12 +211,6 @@ export function GameTrainer() {
         ) : (
           <NextButton ref={nextButtonRef} onClick={handleNext} disabled={isExplaining} />
         )}
-
-        <div className="secondaryActions">
-          <button type="button" className="btn btnSecondary" onClick={handleNewMessage}>
-            Add another practice message
-          </button>
-        </div>
       </main>
 
       <TipsPanel />
